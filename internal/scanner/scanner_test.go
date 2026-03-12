@@ -131,8 +131,11 @@ func TestScanSkipsExcludedPaths(t *testing.T) {
 	}
 }
 
-func TestScanMissingConfigFileStillReported(t *testing.T) {
+func TestScanMissingConfigFileSkipped(t *testing.T) {
 	base := t.TempDir()
+	// Create a dep dir without any config file in the parent.
+	// This should NOT be reported (avoids false positives like
+	// Laravel's resources/views/vendor).
 	depPath := filepath.Join(base, "orphan", "node_modules")
 	if err := os.MkdirAll(depPath, 0755); err != nil {
 		t.Fatal(err)
@@ -150,11 +153,8 @@ func TestScanMissingConfigFileStillReported(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan error: %v", err)
 	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result for orphan dep dir, got %d", len(results))
-	}
-	if !results[0].MissingConfig {
-		t.Error("expected MissingConfig to be true")
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results for dep dir without config file, got %d", len(results))
 	}
 }
 

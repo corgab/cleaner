@@ -256,9 +256,6 @@ func (m MainModel) viewList() string {
 		if !r.ModTime.IsZero() {
 			modStr = r.ModTime.Format("02 Jan 2006")
 		}
-		if r.MissingConfig {
-			modStr = "no config"
-		}
 
 		line := fmt.Sprintf("%s %s %-45s %-14s %-10s %s",
 			cursor, check,

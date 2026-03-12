@@ -30,9 +30,8 @@ type Result struct {
 	TargetName    string    // Human-readable target name (e.g. "Node.js")
 	ConfigFile    string    // Config file name that was matched
 	Size          int64     // Total size in bytes
-	ModTime       time.Time // Mod time of the config file (zero if missing)
+	ModTime       time.Time // Mod time of the config file
 	Stale         bool
-	MissingConfig bool
 }
 
 // systemPaths are always skipped during scanning.
@@ -145,12 +144,11 @@ func Scan(opts Options) ([]Result, error) {
 				}
 			}
 			if !matched {
-				if len(allTargets) > 0 {
-					r.TargetName = allTargets[0].Name
-					r.ConfigFile = allTargets[0].ConfigFile
-				}
-				r.MissingConfig = true
-				r.Stale = true
+				// No config file found in parent directory — skip this.
+				// A "vendor" or "target" dir without its config file
+				// (composer.json, go.mod, etc.) is almost certainly not
+				// a dependency directory (e.g. Laravel's resources/views/vendor).
+				return
 			}
 
 			results[idx] = r
@@ -161,7 +159,7 @@ func Scan(opts Options) ([]Result, error) {
 
 	var staleResults []Result
 	for _, r := range results {
-		if r.Stale {
+		if r.Stale && r.Path != "" {
 			staleResults = append(staleResults, r)
 		}
 	}
