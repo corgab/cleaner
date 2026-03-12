@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/corgab/goclean/internal/config"
+	"github.com/corgab/cleaner/internal/config"
 )
 
 func TestDefaultConfig(t *testing.T) {

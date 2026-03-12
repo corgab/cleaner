@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corgab/goclean/internal/filter"
+	"github.com/corgab/cleaner/internal/filter"
 )
 
 func TestIsStale_OldFile(t *testing.T) {

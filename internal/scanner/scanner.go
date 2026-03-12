@@ -1,4 +1,6 @@
-// Package scanner walks the filesystem to find stale dependency directories.
+// Package scanner percorre il filesystem per individuare le cartelle di
+// dipendenze stale (inattive). Utilizza goroutine con pool limitato per
+// massimizzare la velocità di scansione senza sovraccaricare il sistema.
 package scanner
 
 import (
@@ -9,32 +11,33 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corgab/goclean/internal/filter"
-	"github.com/corgab/goclean/internal/fsutil"
-	"github.com/corgab/goclean/pkg/targets"
+	"github.com/corgab/cleaner/internal/filter"
+	"github.com/corgab/cleaner/internal/fsutil"
+	"github.com/corgab/cleaner/pkg/targets"
 )
 
-// Options configures a scan.
+// Options configura i parametri di una scansione.
 type Options struct {
-	Root          string
-	Days          int
-	Targets       []string // Enabled dependency dir names
-	ExcludedPaths []string
+	Root          string   // Directory radice da cui iniziare la scansione
+	Days          int      // Soglia di giorni: mostra solo progetti più vecchi di N giorni
+	Targets       []string // Nomi delle cartelle di dipendenze abilitate (es. "node_modules")
+	ExcludedPaths []string // Percorsi da escludere completamente dalla scansione
 }
 
-// Result represents a found dependency directory.
+// Result rappresenta una cartella di dipendenze trovata durante la scansione.
 type Result struct {
-	Path          string    // Full path to the dependency directory
-	ProjectDir    string    // Parent directory (the project root)
-	DependencyDir string    // Directory name (e.g. "node_modules")
-	TargetName    string    // Human-readable target name (e.g. "Node.js")
-	ConfigFile    string    // Config file name that was matched
-	Size          int64     // Total size in bytes
-	ModTime       time.Time // Mod time of the config file
-	Stale         bool
+	Path          string    // Percorso completo della cartella di dipendenze
+	ProjectDir    string    // Directory genitore (root del progetto)
+	DependencyDir string    // Nome della cartella (es. "node_modules")
+	TargetName    string    // Nome leggibile del target (es. "Node.js")
+	ConfigFile    string    // File di configurazione trovato nel progetto
+	Size          int64     // Dimensione totale in byte
+	ModTime       time.Time // Data di modifica del file di configurazione
+	Stale         bool      // true se il progetto è considerato inattivo
 }
 
-// systemPaths are always skipped during scanning.
+// systemPaths contiene le directory di sistema da ignorare sempre.
+// Sono le cartelle tipiche di macOS/Linux che non contengono progetti utente.
 var systemPaths = map[string]bool{
 	"System":  true,
 	"Library": true,
@@ -46,9 +49,14 @@ var systemPaths = map[string]bool{
 	"dev":     true,
 }
 
-// Scan walks the filesystem from opts.Root and returns all stale dependency
-// directories matching the enabled targets.
+// Scan percorre il filesystem a partire da opts.Root e restituisce tutte le
+// cartelle di dipendenze stale che corrispondono ai target abilitati.
+//
+// Il processo avviene in due fasi:
+//  1. Walk sincrono del filesystem per trovare le cartelle candidate
+//  2. Analisi parallela delle candidate (dimensione, verifica config, staleness)
 func Scan(opts Options) ([]Result, error) {
+	// Costruisce i set di lookup per accesso O(1)
 	targetSet := make(map[string]bool, len(opts.Targets))
 	for _, t := range opts.Targets {
 		targetSet[t] = true
@@ -59,6 +67,7 @@ func Scan(opts Options) ([]Result, error) {
 		excludedSet[p] = true
 	}
 
+	// Struttura temporanea per le cartelle trovate durante il walk
 	type found struct {
 		path      string
 		parentDir string
@@ -67,39 +76,40 @@ func Scan(opts Options) ([]Result, error) {
 
 	var findings []found
 
+	// Fase 1: Walk sincrono del filesystem
 	err := filepath.WalkDir(opts.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fs.SkipDir
+			return fs.SkipDir // Ignora directory con errori di accesso
 		}
 		if !d.IsDir() {
-			return nil
+			return nil // Ignora i file, cerchiamo solo directory
 		}
 
 		name := d.Name()
 
-		// Skip dot-directories (but not the root itself)
+		// Salta le directory nascoste (iniziano con "."), esclusa la root
 		if strings.HasPrefix(name, ".") && path != opts.Root {
 			return fs.SkipDir
 		}
 
-		// Skip system directories at the root level
+		// Salta le directory di sistema al primo livello
 		if systemPaths[name] && filepath.Dir(path) == opts.Root {
 			return fs.SkipDir
 		}
 
-		// Skip excluded paths
+		// Salta i percorsi esclusi dall'utente
 		if excludedSet[path] {
 			return fs.SkipDir
 		}
 
-		// Check if this dir is a target dependency directory
+		// Se la directory corrisponde a un target abilitato, registrala
 		if targetSet[name] {
 			findings = append(findings, found{
 				path:      path,
 				parentDir: filepath.Dir(path),
 				dirName:   name,
 			})
-			return fs.SkipDir
+			return fs.SkipDir // Non entrare dentro la cartella di dipendenze
 		}
 
 		return nil
@@ -108,17 +118,19 @@ func Scan(opts Options) ([]Result, error) {
 		return nil, err
 	}
 
-	// Process findings in parallel with a bounded worker pool
+	// Fase 2: Analisi parallela con pool di goroutine limitato.
+	// Il semaforo limita la concorrenza al numero di CPU disponibili
+	// per evitare di esaurire i file descriptor del sistema operativo.
 	results := make([]Result, len(findings))
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, runtime.NumCPU())
 
 	for i, f := range findings {
 		wg.Add(1)
-		sem <- struct{}{}
+		sem <- struct{}{} // Acquisisce uno slot dal semaforo
 		go func(idx int, fd found) {
 			defer wg.Done()
-			defer func() { <-sem }()
+			defer func() { <-sem }() // Rilascia lo slot
 
 			r := Result{
 				Path:          fd.path,
@@ -126,9 +138,12 @@ func Scan(opts Options) ([]Result, error) {
 				DependencyDir: fd.dirName,
 			}
 
+			// Calcola la dimensione totale della cartella
 			r.Size = fsutil.DirSize(fd.path)
 
-			// Disambiguate: check all targets for this dir name
+			// Disambiguazione: per cartelle condivise (es. "vendor"),
+			// verifica tutti i possibili config file per identificare
+			// l'ecosistema corretto (PHP vs Go, Rust vs Java, ecc.)
 			allTargets := targets.GetAllByDirName(fd.dirName)
 			matched := false
 			for _, tgt := range allTargets {
@@ -140,14 +155,14 @@ func Scan(opts Options) ([]Result, error) {
 					r.Stale = stale
 					r.ModTime = modTime
 					matched = true
-					break
+					break // Trovato il config file corretto, non serve continuare
 				}
 			}
 			if !matched {
-				// No config file found in parent directory — skip this.
-				// A "vendor" or "target" dir without its config file
-				// (composer.json, go.mod, etc.) is almost certainly not
-				// a dependency directory (e.g. Laravel's resources/views/vendor).
+				// Nessun file di configurazione trovato nella directory genitore.
+				// Questa cartella NON è una vera directory di dipendenze
+				// (es. vendor/ dentro Laravel non è il vendor di Composer).
+				// La ignoriamo per evitare falsi positivi.
 				return
 			}
 
@@ -157,6 +172,7 @@ func Scan(opts Options) ([]Result, error) {
 
 	wg.Wait()
 
+	// Filtra: restituisce solo i risultati stale con percorso valido
 	var staleResults []Result
 	for _, r := range results {
 		if r.Stale && r.Path != "" {

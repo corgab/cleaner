@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/corgab/goclean/internal/cleaner"
+	"github.com/corgab/cleaner/internal/cleaner"
 )
 
 func createDir(t *testing.T, path string) {

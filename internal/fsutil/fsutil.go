@@ -1,4 +1,5 @@
-// Package fsutil provides shared filesystem utility functions.
+// Package fsutil fornisce utilità condivise per operazioni sul filesystem.
+// Usato sia dallo scanner (per calcolare le dimensioni) che dal cleaner.
 package fsutil
 
 import (
@@ -7,12 +8,14 @@ import (
 	"path/filepath"
 )
 
-// DirSize calculates the total size in bytes of all files in a directory tree.
+// DirSize calcola la dimensione totale in byte di tutti i file contenuti
+// ricorsivamente in una directory. Gli errori di accesso vengono ignorati
+// silenziosamente (es. permessi mancanti).
 func DirSize(path string) int64 {
 	var total int64
 	_ = filepath.WalkDir(path, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return nil // Ignora errori di accesso e continua
 		}
 		if !d.IsDir() {
 			info, err := d.Info()
@@ -25,7 +28,7 @@ func DirSize(path string) int64 {
 	return total
 }
 
-// FormatBytes formats bytes into a human-readable string (B, KB, MB, GB).
+// FormatBytes converte un valore in byte in una stringa leggibile (B, KB, MB, GB).
 func FormatBytes(b int64) string {
 	const (
 		kb = 1024

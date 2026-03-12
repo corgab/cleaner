@@ -1,137 +1,137 @@
-# Goclean
+# corgab cleaner
 
-A fast, interactive TUI tool that scans your filesystem for stale dependency folders (`node_modules`, `vendor`, `.venv`, etc.) and lets you bulk-delete them to reclaim disk space.
+Un tool CLI interattivo veloce che scansiona il tuo filesystem alla ricerca di cartelle di dipendenze inutilizzate (`node_modules`, `vendor`, `.venv`, ecc.) e ti permette di eliminarle in blocco per recuperare spazio su disco.
 
-Built in Go with parallel scanning and a [Bubbletea](https://github.com/charmbracelet/bubbletea) terminal interface.
+Scritto in Go con scansione parallela e interfaccia terminale [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
-## Features
+## Funzionalità
 
-- **Smart detection** — only flags projects whose config file (`package.json`, `composer.json`, etc.) hasn't been modified in N days
-- **Parallel scanning** — uses a bounded goroutine pool to scan large filesystems fast
-- **Interactive TUI** — browse results, select/deselect with spacebar, see total space to free in real-time
-- **First-run wizard** — choose which dependency types to monitor on first launch
-- **Dry-run mode** — simulate deletion without removing anything
-- **Lifetime statistics** — tracks how much space you've freed over time
-- **Configurable** — threshold days, excluded paths, and target selection saved to `~/.goclean.yaml`
-- **Safe** — automatically skips dot-directories (`.git`, etc.) and system paths (`/System`, `/Library`, etc.)
+- **Rilevamento intelligente** — segnala solo i progetti il cui file di configurazione (`package.json`, `composer.json`, ecc.) non è stato modificato da N giorni
+- **Scansione parallela** — usa un pool limitato di goroutine per scansionare filesystem anche molto grandi
+- **TUI interattiva** — naviga i risultati, seleziona/deseleziona con la barra spaziatrice, vedi lo spazio recuperabile in tempo reale
+- **Wizard di primo avvio** — scegli quali tipi di dipendenze monitorare al primo utilizzo
+- **Modalità dry-run** — simula l'eliminazione senza rimuovere nulla
+- **Statistiche cumulative** — tiene traccia di quanto spazio hai liberato nel tempo
+- **Configurabile** — soglia giorni, percorsi esclusi e selezione target salvati in `~/.corgab.yaml`
+- **Sicuro** — salta automaticamente le directory nascoste (`.git`, ecc.) e i percorsi di sistema (`/System`, `/Library`, ecc.)
 
-## Supported Targets
+## Target Supportati
 
-| Ecosystem    | Dependency Folder | Config File        |
-|-------------|------------------|--------------------|
-| Node.js     | `node_modules`   | `package.json`     |
-| PHP         | `vendor`         | `composer.json`    |
-| Python      | `.venv` / `venv` | `requirements.txt` |
-| Rust        | `target`         | `Cargo.toml`       |
-| Java Maven  | `target`         | `pom.xml`          |
-| Go          | `vendor`         | `go.mod`           |
-| Dart/Flutter| `.dart_tool`     | `pubspec.yaml`     |
-| CocoaPods   | `Pods`           | `Podfile`          |
-| Gradle      | `build`          | `build.gradle`     |
+| Ecosistema    | Cartella Dipendenze | File di Configurazione |
+|--------------|--------------------|-----------------------|
+| Node.js      | `node_modules`     | `package.json`        |
+| PHP          | `vendor`           | `composer.json`       |
+| Python       | `.venv` / `venv`   | `requirements.txt`    |
+| Rust         | `target`           | `Cargo.toml`          |
+| Java Maven   | `target`           | `pom.xml`             |
+| Go           | `vendor`           | `go.mod`              |
+| Dart/Flutter | `.dart_tool`       | `pubspec.yaml`        |
+| CocoaPods    | `Pods`             | `Podfile`             |
+| Gradle       | `build`            | `build.gradle`        |
 
-Targets are opt-in — you choose which ones to monitor during the setup wizard.
+I target sono opt-in: scegli quali monitorare durante il wizard di configurazione.
 
-## Requirements
+## Requisiti
 
-- **Go 1.22+** — install with `brew install go` (macOS) or see [go.dev/dl](https://go.dev/dl)
-- After installing Go, add `~/go/bin` to your PATH if not already there:
+- **Go 1.22+** — installa con `brew install go` (macOS) oppure visita [go.dev/dl](https://go.dev/dl)
+- Dopo l'installazione di Go, aggiungi `~/go/bin` al tuo PATH se non è già presente:
   ```bash
   echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
   source ~/.zshrc
   ```
 
-## Installation
+## Installazione
 
-### From source
-
-```bash
-git clone https://github.com/corgab/goclean.git
-cd goclean
-go install ./cmd/goclean
-```
-
-Now `goclean` is available globally from any directory.
-
-### Build locally (without global install)
+### Da sorgente
 
 ```bash
-go build -o goclean ./cmd/goclean
-./goclean
+git clone https://github.com/corgab/cleaner.git
+cd cleaner
+go install ./cmd/corgab
 ```
 
-## Usage
+Ora il comando `corgab` è disponibile globalmente da qualsiasi directory.
 
-### Basic
+### Build locale (senza installazione globale)
 
 ```bash
-# Scan home directory with default settings (30 days threshold)
-goclean
+go build -o corgab ./cmd/corgab
+./corgab
 ```
 
-On first run, the setup wizard will ask you which dependency types to monitor.
+## Utilizzo
 
-### Flags
-
-| Flag             | Default   | Description                                    |
-|------------------|-----------|------------------------------------------------|
-| `--path <dir>`   | `~`       | Root directory to scan                         |
-| `--days <n>`     | `30`      | Show projects inactive for more than N days    |
-| `--dry-run`      | `false`   | Simulate deletion without removing anything    |
-| `--stats`        | `false`   | Show lifetime statistics and exit              |
-| `--reset-config` | `false`   | Re-run the setup wizard                        |
-
-### Examples
+### Base
 
 ```bash
-# Scan only your Dev folder
-goclean --path ~/Dev
-
-# Show everything inactive for more than 7 days
-goclean --days 7
-
-# Simulate without deleting
-goclean --dry-run
-
-# Check how much space you've freed over time
-goclean --stats
-
-# Re-select which targets to monitor
-goclean --reset-config
+# Scansiona la home directory con le impostazioni predefinite (soglia 30 giorni)
+corgab
 ```
 
-### TUI Controls
+Al primo avvio, il wizard ti chiederà quali tipi di dipendenze monitorare.
 
-**Setup Wizard:**
+### Flag
 
-| Key       | Action              |
-|-----------|---------------------|
-| `Space`   | Toggle selection    |
-| `a`       | Toggle all          |
-| `j` / `k` | Navigate down/up   |
-| `Enter`   | Confirm             |
-| `q` / `Esc` | Quit              |
+| Flag             | Default   | Descrizione                                        |
+|------------------|-----------|----------------------------------------------------|
+| `--path <dir>`   | `~`       | Directory radice da scansionare                    |
+| `--days <n>`     | `30`      | Mostra progetti inattivi da più di N giorni        |
+| `--dry-run`      | `false`   | Simula l'eliminazione senza rimuovere nulla        |
+| `--stats`        | `false`   | Mostra le statistiche cumulative ed esci           |
+| `--reset-config` | `false`   | Riesegui il wizard di configurazione               |
 
-**Main View:**
+### Esempi
 
-| Key       | Action                  |
-|-----------|-------------------------|
-| `Space`   | Toggle selection        |
-| `a`       | Select all              |
-| `n`       | Deselect all            |
-| `j` / `k` | Navigate down/up       |
-| `Enter`   | Proceed to delete       |
-| `q` / `Esc` | Quit                  |
+```bash
+# Scansiona solo la cartella Dev
+corgab --path ~/Dev
 
-**Confirmation:**
+# Mostra tutto ciò che è inattivo da più di 7 giorni
+corgab --days 7
 
-| Key | Action         |
-|-----|----------------|
-| `y` | Confirm delete |
-| `n` | Go back        |
+# Simula senza eliminare
+corgab --dry-run
 
-## Configuration
+# Controlla quanto spazio hai liberato nel tempo
+corgab --stats
 
-Goclean stores its config at `~/.goclean.yaml`:
+# Riconfigura i target da monitorare
+corgab --reset-config
+```
+
+### Controlli TUI
+
+**Wizard di Configurazione:**
+
+| Tasto       | Azione             |
+|-------------|--------------------|
+| `Spazio`    | Toggle selezione   |
+| `a`         | Toggle tutti       |
+| `j` / `k`  | Naviga giù/su      |
+| `Enter`     | Conferma           |
+| `q` / `Esc` | Esci              |
+
+**Vista Principale:**
+
+| Tasto       | Azione                  |
+|-------------|-------------------------|
+| `Spazio`    | Toggle selezione        |
+| `a`         | Seleziona tutti         |
+| `n`         | Deseleziona tutti       |
+| `j` / `k`  | Naviga giù/su           |
+| `Enter`     | Procedi all'eliminazione|
+| `q` / `Esc` | Esci                   |
+
+**Conferma:**
+
+| Tasto | Azione          |
+|-------|-----------------|
+| `y`   | Conferma        |
+| `n`   | Torna indietro  |
+
+## Configurazione
+
+Corgab salva la sua configurazione in `~/.corgab.yaml`:
 
 ```yaml
 days: 30
@@ -139,62 +139,62 @@ targets:
   - node_modules
   - vendor
 excluded_paths:
-  - /Users/me/important-project
+  - /Users/me/progetto-importante
 ```
 
-- **days** — default staleness threshold (overridable with `--days`)
-- **targets** — dependency folder names to scan for (set during wizard)
-- **excluded_paths** — directories to skip entirely during scan
+- **days** — soglia di inattività predefinita (sovrascrivibile con `--days`)
+- **targets** — nomi delle cartelle di dipendenze da cercare (impostati durante il wizard)
+- **excluded_paths** — directory da saltare completamente durante la scansione
 
-Edit this file directly or use `--reset-config` to re-run the wizard.
+Modifica il file direttamente oppure usa `--reset-config` per rieseguire il wizard.
 
-## How It Works
+## Come Funziona
 
-1. **Walks** the filesystem from the root directory (default `~`)
-2. **Skips** dot-directories, system paths, and excluded paths
-3. **Finds** directories matching your selected targets (`node_modules`, `vendor`, etc.)
-4. **Checks** the config file in the parent directory (`package.json`, `composer.json`, etc.)
-5. **Filters** — only shows projects where the config file is older than the threshold
-6. **Disambiguates** shared directory names (e.g. `vendor` → checks for `composer.json` vs `go.mod`)
-7. **Calculates** sizes in parallel using a bounded goroutine pool
-8. **Displays** results in an interactive TUI for selection and deletion
+1. **Percorre** il filesystem dalla directory radice (default `~`)
+2. **Salta** directory nascoste, percorsi di sistema e percorsi esclusi
+3. **Trova** directory che corrispondono ai target selezionati (`node_modules`, `vendor`, ecc.)
+4. **Verifica** il file di configurazione nella directory genitore (`package.json`, `composer.json`, ecc.)
+5. **Filtra** — mostra solo i progetti il cui file di configurazione è più vecchio della soglia
+6. **Disambigua** nomi condivisi (es. `vendor` → verifica `composer.json` vs `go.mod`)
+7. **Calcola** le dimensioni in parallelo usando un pool limitato di goroutine
+8. **Mostra** i risultati in una TUI interattiva per selezione ed eliminazione
 
-Only the dependency folder is deleted (e.g. `node_modules/`), never the project itself.
+Viene eliminata solo la cartella di dipendenze (es. `node_modules/`), mai il progetto stesso.
 
-## Statistics
+## Statistiche
 
-Goclean tracks lifetime cleaning stats in `~/.goclean_stats.json`:
+Corgab tiene traccia delle statistiche cumulative in `~/.corgab_stats.json`:
 
 ```bash
-$ goclean --stats
-Goclean has freed 14.3 GB in 47 operations since 15 Jan 2026
+$ corgab --stats
+corgab cleaner has freed 14.3 GB in 47 operations since 15 Jan 2026
 ```
 
-## Project Structure
+## Struttura del Progetto
 
 ```
-goclean/
-├── cmd/goclean/          # Entry point, flag parsing
+cleaner/
+├── cmd/corgab/            # Punto di ingresso, parsing dei flag
 ├── internal/
-│   ├── config/           # YAML config load/save
-│   ├── scanner/          # Parallel filesystem scanner
-│   ├── filter/           # Staleness detection
-│   ├── cleaner/          # Directory deletion with dry-run
-│   ├── stats/            # Lifetime statistics (JSON)
-│   ├── fsutil/           # Shared utilities (DirSize, FormatBytes)
-│   └── tui/              # Bubbletea TUI (wizard + main view)
+│   ├── config/            # Caricamento/salvataggio config YAML
+│   ├── scanner/           # Scanner parallelo del filesystem
+│   ├── filter/            # Rilevamento inattività (staleness)
+│   ├── cleaner/           # Eliminazione directory con supporto dry-run
+│   ├── stats/             # Statistiche cumulative (JSON)
+│   ├── fsutil/            # Utilità condivise (DirSize, FormatBytes)
+│   └── tui/               # TUI Bubbletea (wizard + vista principale)
 ├── pkg/
-│   └── targets/          # Target registry
+│   └── targets/           # Registro dei target
 ├── go.mod
 └── go.sum
 ```
 
-## Running Tests
+## Eseguire i Test
 
 ```bash
 go test ./... -v
 ```
 
-## License
+## Licenza
 
 MIT

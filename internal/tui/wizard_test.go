@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/corgab/goclean/internal/tui"
+	"github.com/corgab/cleaner/internal/tui"
 )
 
 func TestWizardInitialState(t *testing.T) {

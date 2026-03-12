@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/corgab/goclean/internal/fsutil"
+	"github.com/corgab/cleaner/internal/fsutil"
 )
 
 func TestDirSize(t *testing.T) {

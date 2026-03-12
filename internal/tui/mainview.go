@@ -6,11 +6,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/corgab/goclean/internal/cleaner"
-	"github.com/corgab/goclean/internal/fsutil"
-	"github.com/corgab/goclean/internal/scanner"
+	"github.com/corgab/cleaner/internal/cleaner"
+	"github.com/corgab/cleaner/internal/fsutil"
+	"github.com/corgab/cleaner/internal/scanner"
 )
 
+// Stili Lipgloss per la vista principale
 var (
 	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).MarginBottom(1)
 
@@ -27,36 +28,38 @@ var (
 	successStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("120"))
 )
 
+// viewState rappresenta lo stato corrente della vista principale.
+// La TUI è una macchina a stati: lista -> conferma -> eliminazione -> completato.
 type viewState int
 
 const (
-	stateList viewState = iota
-	stateConfirm
-	stateDeleting
-	stateDone
+	stateList     viewState = iota // Lista navigabile dei risultati
+	stateConfirm                   // Schermata di conferma prima dell'eliminazione
+	stateDeleting                  // Eliminazione in corso
+	stateDone                      // Operazione completata
 )
 
-// MainModel is the Bubbletea model for the main project list view.
+// MainModel è il modello Bubbletea per la vista principale con la lista dei progetti.
 type MainModel struct {
-	results      []scanner.Result
-	selected     []bool
-	cursor       int
-	state        viewState
-	dryRun       bool
-	statsSummary string
+	results      []scanner.Result // Risultati della scansione
+	selected     []bool           // Stato di selezione per ogni risultato
+	cursor       int              // Posizione corrente del cursore
+	state        viewState        // Stato della macchina a stati della vista
+	dryRun       bool             // Se true, simula l'eliminazione senza cancellare
+	statsSummary string           // Riepilogo statistiche da mostrare nel footer
 
-	deletedCount int
-	freedBytes   int64
-	deleteErrors []string
+	deletedCount int      // Contatore cartelle eliminate
+	freedBytes   int64    // Byte totali liberati
+	deleteErrors []string // Errori verificatisi durante l'eliminazione
 }
 
-// DeletedCount returns how many directories were deleted.
+// DeletedCount restituisce il numero di cartelle eliminate.
 func (m MainModel) DeletedCount() int { return m.deletedCount }
 
-// FreedBytes returns the total bytes freed.
+// FreedBytes restituisce il totale dei byte liberati.
 func (m MainModel) FreedBytes() int64 { return m.freedBytes }
 
-// SelectedPaths returns the paths the user selected for deletion.
+// SelectedPaths restituisce i percorsi selezionati dall'utente per l'eliminazione.
 func (m MainModel) SelectedPaths() []string {
 	var paths []string
 	for i, sel := range m.selected {
@@ -67,7 +70,7 @@ func (m MainModel) SelectedPaths() []string {
 	return paths
 }
 
-// NewMainModel creates the main view model.
+// NewMainModel crea il modello della vista principale.
 func NewMainModel(results []scanner.Result, dryRun bool, statsSummary string) MainModel {
 	return MainModel{
 		results:      results,
@@ -77,17 +80,22 @@ func NewMainModel(results []scanner.Result, dryRun bool, statsSummary string) Ma
 	}
 }
 
+// Init è il comando iniziale di Bubbletea (nessuna azione richiesta).
 func (m MainModel) Init() tea.Cmd { return nil }
 
+// deletionDoneMsg è il messaggio Bubbletea emesso al completamento dell'eliminazione.
 type deletionDoneMsg struct {
 	count  int
 	freed  int64
 	errors []string
 }
 
+// Update è il dispatcher principale degli eventi: smista i messaggi
+// in base allo stato corrente della macchina a stati.
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case deletionDoneMsg:
+		// Eliminazione completata: aggiorna i contatori e passa a stateDone
 		m.deletedCount = msg.count
 		m.freedBytes = msg.freed
 		m.deleteErrors = msg.errors
@@ -101,12 +109,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case stateConfirm:
 			return m.updateConfirm(msg)
 		case stateDone:
-			return m, tea.Quit
+			return m, tea.Quit // Qualsiasi tasto per uscire
 		}
 	}
 	return m, nil
 }
 
+// updateList gestisce gli input nella vista lista (navigazione e selezione).
 func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyEscape:
@@ -114,6 +123,7 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 	case tea.KeyEnter:
+		// Enter: procedi alla conferma solo se c'è almeno una selezione
 		if m.selectedCount() > 0 {
 			m.state = stateConfirm
 		}
@@ -126,6 +136,7 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 	case tea.KeySpace:
+		// Spacebar: toggle selezione dell'elemento corrente
 		if len(m.results) > 0 {
 			m.selected[m.cursor] = !m.selected[m.cursor]
 		}
@@ -133,15 +144,15 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch string(msg.Runes) {
 		case "q":
 			return m, tea.Quit
-		case "k":
+		case "k": // Navigazione vim: su
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case "j":
+		case "j": // Navigazione vim: giù
 			if m.cursor < len(m.results)-1 {
 				m.cursor++
 			}
-		case "a":
+		case "a": // Seleziona/deseleziona tutti
 			allSel := true
 			for _, s := range m.selected {
 				if !s {
@@ -152,7 +163,7 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			for i := range m.selected {
 				m.selected[i] = !allSel
 			}
-		case "n":
+		case "n": // Deseleziona tutti
 			for i := range m.selected {
 				m.selected[i] = false
 			}
@@ -161,20 +172,22 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateConfirm gestisce gli input nella schermata di conferma.
 func (m MainModel) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyEscape:
-		m.state = stateList
+		m.state = stateList // Torna alla lista
 		return m, nil
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 	case tea.KeyRunes:
 		switch string(msg.Runes) {
 		case "y", "Y":
+			// Conferma: avvia l'eliminazione in background
 			m.state = stateDeleting
 			return m, m.performDeletion()
 		case "n", "N":
-			m.state = stateList
+			m.state = stateList // Annulla, torna alla lista
 		case "q":
 			return m, tea.Quit
 		}
@@ -182,6 +195,8 @@ func (m MainModel) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// performDeletion restituisce un comando Bubbletea che esegue l'eliminazione
+// delle cartelle selezionate in background. Al termine emette un deletionDoneMsg.
 func (m MainModel) performDeletion() tea.Cmd {
 	return func() tea.Msg {
 		var (
@@ -206,6 +221,7 @@ func (m MainModel) performDeletion() tea.Cmd {
 	}
 }
 
+// View renderizza la vista corrente in base allo stato della macchina a stati.
 func (m MainModel) View() string {
 	switch m.state {
 	case stateList:
@@ -220,10 +236,11 @@ func (m MainModel) View() string {
 	return ""
 }
 
+// viewList renderizza la lista navigabile dei risultati di scansione.
 func (m MainModel) viewList() string {
 	var b strings.Builder
 
-	title := "Goclean"
+	title := "corgab cleaner"
 	if m.dryRun {
 		title += " (DRY RUN)"
 	}
@@ -236,6 +253,7 @@ func (m MainModel) viewList() string {
 		return b.String()
 	}
 
+	// Header della tabella
 	b.WriteString(headerStyle.Render(fmt.Sprintf("  %-60s %-10s %s", "Folder to delete", "Size", "Last Modified")))
 	b.WriteString("\n")
 
@@ -257,7 +275,7 @@ func (m MainModel) viewList() string {
 			modStr = r.ModTime.Format("02 Jan 2006")
 		}
 
-		// Show the actual path that will be deleted (e.g. .../myproject/vendor)
+		// Mostra il percorso effettivo che verrà eliminato (es. .../myproject/vendor)
 		displayPath := truncate(r.Path, 50)
 
 		line := fmt.Sprintf("%s %s %-50s %-10s %s",
@@ -284,11 +302,13 @@ func (m MainModel) viewList() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(footerStyle.Render("  github.com/corgab/goclean"))
+	b.WriteString(footerStyle.Render("  github.com/corgab/cleaner"))
 
 	return b.String()
 }
 
+// viewConfirm renderizza la schermata di conferma con l'elenco delle cartelle
+// che stanno per essere eliminate e la dimensione totale.
 func (m MainModel) viewConfirm() string {
 	var b strings.Builder
 
@@ -313,6 +333,7 @@ func (m MainModel) viewConfirm() string {
 	return b.String()
 }
 
+// viewDeleting renderizza il messaggio durante l'eliminazione in corso.
 func (m MainModel) viewDeleting() string {
 	if m.dryRun {
 		return "\n  Simulating deletion...\n"
@@ -320,6 +341,7 @@ func (m MainModel) viewDeleting() string {
 	return fmt.Sprintf("\n  Deleting %d folders...\n", m.selectedCount())
 }
 
+// viewDone renderizza il riepilogo finale dopo l'eliminazione.
 func (m MainModel) viewDone() string {
 	var b strings.Builder
 
@@ -342,6 +364,7 @@ func (m MainModel) viewDone() string {
 	return b.String()
 }
 
+// selectedCount restituisce il numero di elementi attualmente selezionati.
 func (m MainModel) selectedCount() int {
 	count := 0
 	for _, s := range m.selected {
@@ -352,6 +375,7 @@ func (m MainModel) selectedCount() int {
 	return count
 }
 
+// selectedSize restituisce la dimensione totale in byte degli elementi selezionati.
 func (m MainModel) selectedSize() int64 {
 	var total int64
 	for i, s := range m.selected {
@@ -362,6 +386,8 @@ func (m MainModel) selectedSize() int64 {
 	return total
 }
 
+// truncate tronca una stringa aggiungendo "..." all'inizio se supera maxLen.
+// Utile per mostrare percorsi lunghi in spazi limitati.
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s

@@ -1,4 +1,5 @@
-// Package config handles loading and saving the Goclean configuration file.
+// Package config gestisce il caricamento e il salvataggio del file di
+// configurazione YAML di Corgab (~/.corgab.yaml).
 package config
 
 import (
@@ -7,14 +8,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the user's Goclean preferences.
+// Config contiene le preferenze dell'utente per Corgab.
 type Config struct {
-	Days          int      `yaml:"days"`
-	Targets       []string `yaml:"targets"`
-	ExcludedPaths []string `yaml:"excluded_paths"`
+	Days          int      `yaml:"days"`           // Soglia di giorni di inattività
+	Targets       []string `yaml:"targets"`        // Nomi delle cartelle di dipendenze da monitorare
+	ExcludedPaths []string `yaml:"excluded_paths"` // Percorsi da ignorare durante la scansione
 }
 
-// Default returns a Config with default values and no targets selected.
+// Default restituisce una configurazione con valori predefiniti e nessun target selezionato.
+// I target vengono scelti dall'utente al primo avvio tramite il wizard.
 func Default() Config {
 	return Config{
 		Days:          30,
@@ -23,13 +25,13 @@ func Default() Config {
 	}
 }
 
-// Exists reports whether a config file exists at the given path.
+// Exists verifica se esiste un file di configurazione al percorso indicato.
 func Exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-// Load reads and parses the YAML config file at the given path.
+// Load legge e deserializza il file YAML di configurazione.
 func Load(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -42,7 +44,7 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
-// Save writes the config as YAML to the given path.
+// Save serializza la configurazione in formato YAML e la scrive su disco.
 func Save(cfg Config, path string) error {
 	data, err := yaml.Marshal(cfg)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corgab/goclean/internal/stats"
+	"github.com/corgab/cleaner/internal/stats"
 )
 
 func TestNewStatsEmpty(t *testing.T) {

@@ -3,7 +3,7 @@ package targets_test
 import (
 	"testing"
 
-	"github.com/corgab/goclean/pkg/targets"
+	"github.com/corgab/cleaner/pkg/targets"
 )
 
 func TestAllTargetsHaveRequiredFields(t *testing.T) {

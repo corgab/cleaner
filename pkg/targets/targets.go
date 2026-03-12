@@ -1,14 +1,20 @@
-// Package targets defines the registry of dependency directory types that
-// Goclean can detect and clean.
+// Package targets definisce il registro dei tipi di cartelle di dipendenze
+// che Corgab è in grado di rilevare e pulire.
 package targets
 
-// Target represents a type of dependency directory.
+// Target rappresenta un tipo di cartella di dipendenze.
+// Ogni target associa un ecosistema (es. Node.js) alla cartella generata
+// dal package manager (es. node_modules) e al file di configurazione
+// che ne attesta la presenza (es. package.json).
 type Target struct {
-	Name          string // Human-readable name (e.g. "Node.js")
-	DependencyDir string // Directory name to look for (e.g. "node_modules")
-	ConfigFile    string // Config file that lives alongside it (e.g. "package.json")
+	Name          string // Nome leggibile dell'ecosistema (es. "Node.js")
+	DependencyDir string // Nome della cartella di dipendenze da cercare (es. "node_modules")
+	ConfigFile    string // File di configurazione presente nella directory del progetto (es. "package.json")
 }
 
+// registry contiene tutti i target supportati.
+// Nota: alcune cartelle (vendor, target) sono condivise da più ecosistemi.
+// La disambiguazione avviene nel package scanner verificando quale config file esiste.
 var registry = []Target{
 	{Name: "Node.js", DependencyDir: "node_modules", ConfigFile: "package.json"},
 	{Name: "PHP (Composer)", DependencyDir: "vendor", ConfigFile: "composer.json"},
@@ -22,9 +28,13 @@ var registry = []Target{
 	{Name: "Gradle", DependencyDir: "build", ConfigFile: "build.gradle"},
 }
 
+// byDir mappa nome cartella -> primo target registrato (lookup veloce).
 var byDir map[string]Target
+
+// byDirAll mappa nome cartella -> tutti i target registrati (per disambiguazione).
 var byDirAll map[string][]Target
 
+// init popola le mappe di lookup all'avvio del programma.
 func init() {
 	byDir = make(map[string]Target, len(registry))
 	byDirAll = make(map[string][]Target, len(registry))
@@ -36,25 +46,26 @@ func init() {
 	}
 }
 
-// All returns every registered target.
+// All restituisce una copia di tutti i target registrati.
 func All() []Target {
 	out := make([]Target, len(registry))
 	copy(out, registry)
 	return out
 }
 
-// GetByDirName looks up the first target registered for a dependency directory name.
+// GetByDirName restituisce il primo target associato al nome di cartella specificato.
 func GetByDirName(dir string) (Target, bool) {
 	t, ok := byDir[dir]
 	return t, ok
 }
 
-// GetAllByDirName returns all targets registered for a dependency directory name.
+// GetAllByDirName restituisce tutti i target associati al nome di cartella specificato.
+// Usato per disambiguare cartelle condivise (es. "vendor" -> PHP e Go).
 func GetAllByDirName(dir string) []Target {
 	return byDirAll[dir]
 }
 
-// DirNames returns all unique dependency directory names.
+// DirNames restituisce tutti i nomi univoci delle cartelle di dipendenze.
 func DirNames() []string {
 	seen := make(map[string]bool, len(registry))
 	var names []string
@@ -67,7 +78,7 @@ func DirNames() []string {
 	return names
 }
 
-// ForDirs returns the subset of targets whose DependencyDir is in the given set.
+// ForDirs restituisce il sottoinsieme di target le cui cartelle sono nell'elenco fornito.
 func ForDirs(enabled []string) []Target {
 	set := make(map[string]bool, len(enabled))
 	for _, d := range enabled {

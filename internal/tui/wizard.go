@@ -1,4 +1,6 @@
-// Package tui implements the Bubbletea-based terminal UI for Goclean.
+// Package tui implementa l'interfaccia terminale interattiva basata su
+// Bubbletea per Corgab. Contiene sia il wizard di primo avvio che la vista
+// principale per la selezione e l'eliminazione delle cartelle.
 package tui
 
 import (
@@ -7,9 +9,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/corgab/goclean/pkg/targets"
+	"github.com/corgab/cleaner/pkg/targets"
 )
 
+// Stili Lipgloss per il wizard di configurazione
 var (
 	wizardTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).MarginBottom(1)
 	wizardItemStyle     = lipgloss.NewStyle().PaddingLeft(2)
@@ -17,20 +20,22 @@ var (
 	wizardCursorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 )
 
-// WizardModel is the Bubbletea model for the first-run target selection wizard.
+// WizardModel è il modello Bubbletea per il wizard di selezione target al primo avvio.
+// L'utente può selezionare quali cartelle di dipendenze monitorare.
 type WizardModel struct {
-	items    []wizardItem
-	cursor   int
-	done     bool
-	quitting bool
+	items    []wizardItem // Lista di target disponibili con stato di selezione
+	cursor   int          // Posizione corrente del cursore
+	done     bool         // true quando l'utente conferma con Enter
+	quitting bool         // true quando l'utente esce con q/Esc
 }
 
+// wizardItem associa un target al suo stato di selezione nel wizard.
 type wizardItem struct {
 	target   targets.Target
 	selected bool
 }
 
-// WizardResult returns the selected dependency dir names after the wizard completes.
+// WizardResult restituisce i nomi delle cartelle di dipendenze selezionate dall'utente.
 func (m WizardModel) WizardResult() []string {
 	var selected []string
 	for _, item := range m.items {
@@ -41,13 +46,13 @@ func (m WizardModel) WizardResult() []string {
 	return selected
 }
 
-// Done reports whether the wizard has completed.
+// Done indica se il wizard è stato completato con conferma.
 func (m WizardModel) Done() bool { return m.done }
 
-// Quitting reports whether the user quit the wizard.
+// Quitting indica se l'utente ha interrotto il wizard.
 func (m WizardModel) Quitting() bool { return m.quitting }
 
-// NewWizardModel creates a new wizard model with all available targets.
+// NewWizardModel crea un nuovo modello wizard con tutti i target disponibili.
 func NewWizardModel() WizardModel {
 	all := targets.All()
 	items := make([]wizardItem, len(all))
@@ -57,8 +62,10 @@ func NewWizardModel() WizardModel {
 	return WizardModel{items: items}
 }
 
+// Init è il comando iniziale di Bubbletea (nessuna azione richiesta).
 func (m WizardModel) Init() tea.Cmd { return nil }
 
+// Update gestisce tutti gli input da tastiera del wizard.
 func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -81,21 +88,22 @@ func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case tea.KeySpace:
+			// Spacebar: toggle selezione dell'elemento corrente
 			m.items[m.cursor].selected = !m.items[m.cursor].selected
 		case tea.KeyRunes:
 			switch string(msg.Runes) {
 			case "q":
 				m.quitting = true
 				return m, tea.Quit
-			case "k":
+			case "k": // Navigazione vim: su
 				if m.cursor > 0 {
 					m.cursor--
 				}
-			case "j":
+			case "j": // Navigazione vim: giù
 				if m.cursor < len(m.items)-1 {
 					m.cursor++
 				}
-			case "a":
+			case "a": // Toggle tutti: se tutti selezionati -> deseleziona, altrimenti seleziona tutti
 				allSelected := true
 				for _, item := range m.items {
 					if !item.selected {
@@ -112,10 +120,11 @@ func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renderizza l'interfaccia del wizard nel terminale.
 func (m WizardModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(wizardTitleStyle.Render("Goclean - Setup Wizard"))
+	b.WriteString(wizardTitleStyle.Render("corgab cleaner - Setup Wizard"))
 	b.WriteString("\n")
 	b.WriteString("Select the dependency folders you want to monitor:\n")
 	b.WriteString("(space: toggle, a: toggle all, enter: confirm)\n\n")
@@ -147,7 +156,7 @@ func (m WizardModel) View() string {
 		}
 	}
 	b.WriteString(fmt.Sprintf("  %d selected  |  enter: confirm  |  q/esc: quit\n", selected))
-	b.WriteString(wizardItemStyle.Render("\n  github.com/corgab/goclean"))
+	b.WriteString(wizardItemStyle.Render("\n  github.com/corgab/cleaner"))
 	b.WriteString("\n")
 
 	return b.String()

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/corgab/goclean/internal/scanner"
-	"github.com/corgab/goclean/internal/tui"
+	"github.com/corgab/cleaner/internal/scanner"
+	"github.com/corgab/cleaner/internal/tui"
 )
 
 func sampleResults() []scanner.Result {
@@ -93,7 +93,7 @@ func TestMainModelEmptyResults(t *testing.T) {
 }
 
 func TestMainModelViewContainsStats(t *testing.T) {
-	m := tui.NewMainModel(sampleResults(), false, "Goclean has freed 5.0 GB in 10 operations")
+	m := tui.NewMainModel(sampleResults(), false, "corgab cleaner has freed 5.0 GB in 10 operations")
 	view := m.View()
 	if view == "" {
 		t.Error("expected non-empty view")

@@ -1,4 +1,4 @@
-module github.com/corgab/goclean
+module github.com/corgab/cleaner
 
 go 1.26.1
 

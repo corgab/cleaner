@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corgab/goclean/internal/scanner"
+	"github.com/corgab/cleaner/internal/scanner"
 )
 
 func createFakeProject(t *testing.T, base, projectName, depDir, configFile string, modTime time.Time) {

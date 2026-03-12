@@ -1,4 +1,5 @@
-// Package stats tracks lifetime cleaning statistics for Goclean.
+// Package stats gestisce le statistiche cumulative delle sessioni di pulizia.
+// I dati vengono salvati in formato JSON su ~/.corgab_stats.json.
 package stats
 
 import (
@@ -7,33 +8,34 @@ import (
 	"os"
 	"time"
 
-	"github.com/corgab/goclean/internal/fsutil"
+	"github.com/corgab/cleaner/internal/fsutil"
 )
 
-// Stats holds lifetime cleaning statistics.
+// Stats contiene le statistiche cumulative di tutte le sessioni di pulizia.
 type Stats struct {
-	TotalCleanedBytes int64          `json:"total_cleaned_bytes"`
-	TotalDeletions    int            `json:"total_deletions"`
-	FirstRun          time.Time      `json:"first_run"`
-	LastRun           time.Time      `json:"last_run"`
-	History           []HistoryEntry `json:"history"`
+	TotalCleanedBytes int64          `json:"total_cleaned_bytes"` // Byte totali liberati
+	TotalDeletions    int            `json:"total_deletions"`     // Numero totale di cartelle eliminate
+	FirstRun          time.Time      `json:"first_run"`           // Data del primo utilizzo
+	LastRun           time.Time      `json:"last_run"`            // Data dell'ultimo utilizzo
+	History           []HistoryEntry `json:"history"`              // Storico delle singole sessioni
 }
 
-// HistoryEntry records a single cleaning session.
+// HistoryEntry rappresenta una singola sessione di pulizia.
 type HistoryEntry struct {
-	Date       time.Time `json:"date"`
-	FreedBytes int64     `json:"freed_bytes"`
-	Count      int       `json:"count"`
+	Date       time.Time `json:"date"`        // Data della sessione
+	FreedBytes int64     `json:"freed_bytes"` // Byte liberati nella sessione
+	Count      int       `json:"count"`       // Cartelle eliminate nella sessione
 }
 
-// New returns a fresh, empty Stats.
+// New restituisce un oggetto Stats vuoto e inizializzato.
 func New() Stats {
 	return Stats{
 		History: []HistoryEntry{},
 	}
 }
 
-// Record adds a cleaning session to the stats.
+// Record registra una nuova sessione di pulizia nelle statistiche.
+// Aggiorna automaticamente FirstRun (se è il primo utilizzo) e LastRun.
 func (s *Stats) Record(freedBytes int64, count int) {
 	now := time.Now()
 	if s.FirstRun.IsZero() {
@@ -49,19 +51,19 @@ func (s *Stats) Record(freedBytes int64, count int) {
 	})
 }
 
-// Summary returns a human-readable summary string.
+// Summary restituisce un riepilogo leggibile delle statistiche totali.
 func (s *Stats) Summary() string {
 	if s.TotalDeletions == 0 {
 		return "No cleaning sessions yet."
 	}
-	return fmt.Sprintf("Goclean has freed %s in %d operations since %s",
+	return fmt.Sprintf("corgab cleaner has freed %s in %d operations since %s",
 		fsutil.FormatBytes(s.TotalCleanedBytes),
 		s.TotalDeletions,
 		s.FirstRun.Format("02 Jan 2006"),
 	)
 }
 
-// Save writes stats as JSON to the given path.
+// Save scrive le statistiche in formato JSON al percorso indicato.
 func Save(s *Stats, path string) error {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
@@ -70,7 +72,8 @@ func Save(s *Stats, path string) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// Load reads stats from the given path. Returns fresh stats if file is missing.
+// Load legge le statistiche dal file JSON al percorso indicato.
+// Se il file non esiste, restituisce statistiche vuote (primo avvio).
 func Load(path string) (*Stats, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
