@@ -80,6 +80,8 @@ func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.items)-1 {
 				m.cursor++
 			}
+		case tea.KeySpace:
+			m.items[m.cursor].selected = !m.items[m.cursor].selected
 		case tea.KeyRunes:
 			switch string(msg.Runes) {
 			case "q":
@@ -93,8 +95,6 @@ func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor < len(m.items)-1 {
 					m.cursor++
 				}
-			case " ":
-				m.items[m.cursor].selected = !m.items[m.cursor].selected
 			case "a":
 				allSelected := true
 				for _, item := range m.items {

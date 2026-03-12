@@ -23,7 +23,7 @@ func TestWizardInitialState(t *testing.T) {
 func TestWizardToggleAndConfirm(t *testing.T) {
 	m := tui.NewWizardModel()
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
 	m = updated.(tui.WizardModel)
 
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})

@@ -48,7 +48,7 @@ func TestMainModelInitialState(t *testing.T) {
 func TestMainModelToggleSelection(t *testing.T) {
 	m := tui.NewMainModel(sampleResults(), false, "")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
 	m = updated.(tui.MainModel)
 
 	selected := m.SelectedPaths()

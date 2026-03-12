@@ -125,6 +125,10 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.results)-1 {
 			m.cursor++
 		}
+	case tea.KeySpace:
+		if len(m.results) > 0 {
+			m.selected[m.cursor] = !m.selected[m.cursor]
+		}
 	case tea.KeyRunes:
 		switch string(msg.Runes) {
 		case "q":
@@ -136,10 +140,6 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "j":
 			if m.cursor < len(m.results)-1 {
 				m.cursor++
-			}
-		case " ":
-			if len(m.results) > 0 {
-				m.selected[m.cursor] = !m.selected[m.cursor]
 			}
 		case "a":
 			allSel := true
