@@ -147,6 +147,8 @@ func (m WizardModel) View() string {
 		}
 	}
 	b.WriteString(fmt.Sprintf("  %d selected  |  enter: confirm  |  q/esc: quit\n", selected))
+	b.WriteString(wizardItemStyle.Render("\n  github.com/corgab/goclean"))
+	b.WriteString("\n")
 
 	return b.String()
 }

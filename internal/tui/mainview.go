@@ -283,6 +283,9 @@ func (m MainModel) viewList() string {
 		b.WriteString(footerStyle.Render("  " + m.statsSummary))
 	}
 
+	b.WriteString("\n")
+	b.WriteString(footerStyle.Render("  github.com/corgab/goclean"))
+
 	return b.String()
 }
 
