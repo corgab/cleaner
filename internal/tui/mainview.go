@@ -236,7 +236,7 @@ func (m MainModel) viewList() string {
 		return b.String()
 	}
 
-	b.WriteString(headerStyle.Render(fmt.Sprintf("  %-50s %-14s %-10s %s", "Project", "Type", "Size", "Last Modified")))
+	b.WriteString(headerStyle.Render(fmt.Sprintf("  %-60s %-10s %s", "Folder to delete", "Size", "Last Modified")))
 	b.WriteString("\n")
 
 	for i, r := range m.results {
@@ -257,10 +257,12 @@ func (m MainModel) viewList() string {
 			modStr = r.ModTime.Format("02 Jan 2006")
 		}
 
-		line := fmt.Sprintf("%s %s %-45s %-14s %-10s %s",
+		// Show the actual path that will be deleted (e.g. .../myproject/vendor)
+		displayPath := truncate(r.Path, 50)
+
+		line := fmt.Sprintf("%s %s %-50s %-10s %s",
 			cursor, check,
-			truncate(r.ProjectDir, 45),
-			r.TargetName,
+			displayPath,
 			fsutil.FormatBytes(r.Size),
 			modStr,
 		)
