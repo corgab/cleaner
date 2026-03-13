@@ -60,6 +60,22 @@ func TestMainModelToggleSelection(t *testing.T) {
 	}
 }
 
+func TestMainModelToggleSelectionSpaceRune(t *testing.T) {
+	m := tui.NewMainModel(sampleResults(), false, "")
+
+	// Simula spazio come rune (comportamento Windows)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	m = updated.(tui.MainModel)
+
+	selected := m.SelectedPaths()
+	if len(selected) != 1 {
+		t.Fatalf("expected 1 selected, got %d", len(selected))
+	}
+	if selected[0] != "/tmp/project1/node_modules" {
+		t.Errorf("unexpected path: %s", selected[0])
+	}
+}
+
 func TestMainModelSelectAll(t *testing.T) {
 	m := tui.NewMainModel(sampleResults(), false, "")
 

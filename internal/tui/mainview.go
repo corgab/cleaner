@@ -142,6 +142,10 @@ func (m MainModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyRunes:
 		switch string(msg.Runes) {
+		case " ": // Spazio come rune (Windows compatibility)
+			if len(m.results) > 0 {
+				m.selected[m.cursor] = !m.selected[m.cursor]
+			}
 		case "q":
 			return m, tea.Quit
 		case "k": // Navigazione vim: su

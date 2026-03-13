@@ -92,6 +92,8 @@ func (m WizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.items[m.cursor].selected = !m.items[m.cursor].selected
 		case tea.KeyRunes:
 			switch string(msg.Runes) {
+			case " ": // Spazio come rune (Windows compatibility)
+				m.items[m.cursor].selected = !m.items[m.cursor].selected
 			case "q":
 				m.quitting = true
 				return m, tea.Quit

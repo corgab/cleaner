@@ -55,6 +55,25 @@ func TestWizardSelectAll(t *testing.T) {
 	}
 }
 
+func TestWizardToggleSpaceRune(t *testing.T) {
+	m := tui.NewWizardModel()
+
+	// Simula spazio come rune (comportamento Windows)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	m = updated.(tui.WizardModel)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(tui.WizardModel)
+
+	if !m.Done() {
+		t.Error("expected wizard to be done after enter")
+	}
+	result := m.WizardResult()
+	if len(result) != 1 {
+		t.Fatalf("expected 1 selection, got %d", len(result))
+	}
+}
+
 func TestWizardQuit(t *testing.T) {
 	m := tui.NewWizardModel()
 
